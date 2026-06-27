@@ -1,36 +1,41 @@
-// This runs the moment the page starts loading
-if (localStorage.getItem('isLoggedIn') !== 'true') {
-    window.location.href = 'login.html';
-}
+
+var supabase = window.supabase.createClient(
+    'https://lklhickxvjsdjhpdfuwz.supabase.co',
+    'sb_publishable_IXGVEByFPxwQuE7iEUArUg_S5STh98Y'
+);
+window.onload = function () {
+    loadPosts();
+};
 var currentUserName = localStorage.getItem('userName') || "Guest";
-var posts = document.getElementById('posts');
+var postsContainer = document.getElementById('posts');
 var title = document.getElementById('title');
 var description = document.getElementById('description');
 var SelectedImgSrc = "";
 var myStyle = "";
 var selectedTextColor = "#000000";
 var isEditing = false;
-var editIndex = null;
-var selectedFont = "Segoe UI"; 
+var editIndex = null; // Stores the database row ID during edits
+var selectedFont = "Segoe UI";
 var selectedSize = "18px";
-
-function changeFont(fontPicker) {
-    selectedFont = fontPicker.value;
-    title.style.fontFamily = selectedFont;
-}
-
-function changeSize(sizePicker) {
-    selectedSize = sizePicker.value; 
-    title.style.fontSize = selectedSize;
-    description.style.fontSize = selectedSize;
-}
 
 var userIcon = document.getElementById("userIcon");
 if (userIcon) {
     userIcon.innerText = currentUserName.charAt(0).toUpperCase();
 }
 
-window.onload = loadPosts;
+
+
+
+function changeFont(fontPicker) {
+    selectedFont = fontPicker.value;
+}
+
+
+function changeSize(sizePicker) {
+    selectedSize = sizePicker.value;
+    console.log(selectedSize)
+    
+}
 
 function applybg(img) {
     SelectedImgSrc = img.getAttribute('src');
@@ -53,15 +58,13 @@ function applycolor(element) {
     description.style.color = selectedTextColor;
 }
 
-function post() {
-    var allPosts = JSON.parse(localStorage.getItem('allPosts')) || [];
-
+async function post() {
     if (title.value.trim() === "" || description.value.trim() === "") {
         Swal.fire({ title: 'Error!', text: 'Fill all fields', icon: 'error' });
         return;
     }
 
-    var newPost = {
+    var postData = {
         title: title.value,
         description: description.value,
         image: SelectedImgSrc,
@@ -71,19 +74,41 @@ function post() {
         fontSize: selectedSize
     };
 
+    // --- NEW CLOUD CODE HAPPENS HERE ---
     if (isEditing === true && editIndex !== null) {
-        allPosts.splice(editIndex, 1, newPost);
+        // Update an existing row matching our database row ID
+        let { error } = await supabase
+            .from('post app table')
+            .update(postData)
+            .eq('id', editIndex);
+
+        if (error) {
+            console.error("Update Error:", error.message);
+            Swal.fire({ title: 'Error!', text: 'Failed to update post.', icon: 'error' });
+            return;
+        }
         isEditing = false;
         editIndex = null;
     } else {
-        allPosts.push(newPost);
+        // Insert a brand new record into the cloud table
+        let {data, error } = await supabase
+            .from('post app table')
+            .insert([postData])
+            .select()
+            console.log(data)
+
+
+        if (error) {
+            console.error("Insertion Error:", error.message);
+            Swal.fire({ title: 'Error!', text: 'Failed to save post.', icon: 'error' });
+            return;
+        }
     }
 
-    localStorage.setItem("allPosts", JSON.stringify(allPosts));
+    // Refresh UI and clear out inputs
     loadPosts();
     resetInputs();
 }
-
 function resetInputs() {
     title.value = "";
     description.value = "";
@@ -94,7 +119,7 @@ function resetInputs() {
     selectedTextColor = "#000000";
     selectedFont = "Segoe UI";
     selectedSize = "18px";
-    
+
     var bgimgs = document.getElementsByClassName('bgimg');
     for (var i = 0; i < bgimgs.length; i++) {
         bgimgs[i].classList.remove('selected');
@@ -104,20 +129,23 @@ function resetInputs() {
         colorbox[i].classList.remove('selected');
     }
 }
+async function deletePost(id) {
+    let { error } = await supabase
+        .from('post app table')
+        .delete()
+        .eq('id', id);
 
-function deletePost(index) {
-    var allPosts = JSON.parse(localStorage.getItem('allPosts')) || [];
-    allPosts.splice(index, 1);
-    localStorage.setItem("allPosts", JSON.stringify(allPosts));
-    loadPosts();
-}
-
-function previewPost() {
+    if (error) {
+        console.error("Delete Error:", error.message);
+    } else {
+        loadPosts();
+    }
+} function previewPost() {
     if (!title.value.trim() && !description.value.trim()) {
         Swal.fire({ icon: 'error', title: 'Empty!', text: 'Write something to preview!' });
         return;
     }
-    
+
     Swal.fire({
         title: 'Post Preview',
         html: `
@@ -131,12 +159,18 @@ function previewPost() {
         width: '600px'
     });
 }
+async function editPost(id) {
+    let { data: postArray, error } = await supabase
+        .from('post app table')
+        .select('*')
+        .eq('id', id);
 
-function editPost(index) {
-    var allPosts = JSON.parse(localStorage.getItem("allPosts")) || [];
-    var item = allPosts[index];
+    if (error || !postArray || postArray.length === 0) {
+        console.error("Could not fetch post to edit:", error);
+        return;
+    }
 
-    if (!item) return;
+    var item = postArray[0];
 
     title.value = item.title;
     description.value = item.description;
@@ -145,51 +179,57 @@ function editPost(index) {
     selectedTextColor = item.color || "#000000";
     SelectedImgSrc = item.image || "";
 
-    title.style.fontFamily = selectedFont;
-    title.style.fontSize = selectedSize;
-    title.style.color = selectedTextColor;
-    description.style.fontFamily = selectedFont;
-    description.style.fontSize = selectedSize;
-    description.style.color = selectedTextColor;
 
     if (document.getElementById('fontPicker')) document.getElementById('fontPicker').value = selectedFont;
     if (document.getElementById('sizePicker')) document.getElementById('sizePicker').value = selectedSize;
 
     myStyle = SelectedImgSrc ? `background-image: url(${SelectedImgSrc}); background-size: cover;` : "";
-    editIndex = index;
+
+    editIndex = id;
     isEditing = true;
 }
+async function loadPosts() {
+    if (!postsContainer) return;
+    postsContainer.innerHTML = "<h4>Loading posts from cloud...</h4>";
 
-function loadPosts() {
-    var postsContainer = document.getElementById('posts');
-    var allPosts = JSON.parse(localStorage.getItem('allPosts')) || [];
-    postsContainer.innerHTML = "";
+    let { data: allPosts, error } = await supabase
+        .from('post app table')
+        .select('*')
+        .order('id', { ascending: false });
 
-    for (var i = allPosts.length - 1; i >= 0; i--) {
+    if (error) {
+        console.error("Supabase Error:", error.message);
+        postsContainer.innerHTML = "<p class='text-danger'>Failed to load posts.</p>";
+        return;
+    }
+
+    let listHtml = "";
+    for (var i = 0; i < allPosts.length; i++) {
         var item = allPosts[i];
         var itemFont = item.font || "Segoe UI";
         var itemSize = item.fontSize || "18px";
         var itemBg = item.image ? `background-image: url(${item.image}); background-size: cover;` : "background-color: transparent;";
 
-        postsContainer.innerHTML += `
+        listHtml += `
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span style="text-transform:capitalize;">Posted by: ${item.author}</span>
                     <div class="ms-auto">
-                        <button onclick="deletePost(${i})" style="background: none; border: none; cursor: pointer;" class="me-2">
+                        <button onclick="deletePost(${item.id})" style="background: none; border: none; cursor: pointer;" class="me-2">
                             <img src="assets/trash-bin.png" style="width: 26px;">
                         </button>
-                        <button onclick="editPost(${i})" style="background: none; border: none; cursor: pointer;">
+                        <button onclick="editPost(${item.id})" style="background: none; border: none; cursor: pointer;">
                             <img src="assets/pencil.png" style="width: 19px;">
                         </button>
                     </div>
                 </div>
-                <div class="card-body px-4 py-4" style="${itemBg} min-height: 200px; font-family: ${itemFont};">
-                    <h3 style="color: ${item.color} !important; font-size: ${itemSize} !important; font-weight: bold;">${item.title}</h3>
-                    <p style="color: ${item.color};">${item.description}</p>
+                <div class="card-body px-4 py-4" style="${itemBg} min-height: 200px; ">
+                    <h3 style="color: ${item.color} !important; font-size: ${itemSize} !important; font-weight: bold; font-family: ${itemFont};">${item.title}</h3>
+                    <p style="color: white; font-size: 18px !important;">${item.description}</p>
                 </div>
             </div>`;
     }
+    postsContainer.innerHTML = listHtml;
 }
 
 function logOut() {
@@ -204,7 +244,8 @@ function logOut() {
     }).then(function (result) {
         if (result.isConfirmed) {
             localStorage.removeItem('isLoggedIn');
-            window.location.href = 'login.html';
+
+            window.location.href = 'index.html';
         }
     });
 }
