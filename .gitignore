@@ -1,9 +1,1 @@
-# Node dependencies
-node_modules/
-
-# Package configurations
-package-lock.json
-
-# Operating System Files
-.DS_Store
-Thumbs.db
+node_modules
