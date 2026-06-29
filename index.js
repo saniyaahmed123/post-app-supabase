@@ -14,7 +14,7 @@ var SelectedImgSrc = "";
 var myStyle = "";
 var selectedTextColor = "#000000";
 var isEditing = false;
-var editIndex = null; // Stores the database row ID during edits
+var editIndex = null; 
 var selectedFont = "Segoe UI";
 var selectedSize = "18px";
 
@@ -74,9 +74,7 @@ async function post() {
         fontSize: selectedSize
     };
 
-    // --- NEW CLOUD CODE HAPPENS HERE ---
     if (isEditing === true && editIndex !== null) {
-        // Update an existing row matching our database row ID
         let { error } = await supabase
             .from('post app table')
             .update(postData)
@@ -90,7 +88,6 @@ async function post() {
         isEditing = false;
         editIndex = null;
     } else {
-        // Insert a brand new record into the cloud table
         let {data, error } = await supabase
             .from('post app table')
             .insert([postData])
@@ -105,7 +102,6 @@ async function post() {
         }
     }
 
-    // Refresh UI and clear out inputs
     loadPosts();
     resetInputs();
 }
@@ -159,7 +155,17 @@ async function deletePost(id) {
         width: '600px'
     });
 }
-async function editPost(id) {
+async function editPost(event,id) {
+var myCard = event.parentNode.parentNode.parentNode;
+   var authorName = myCard.querySelector('.auth')
+    console.log(authorName)
+    console.log(!authorName.innerText.toLowerCase().includes(currentUserName.toLowerCase()))
+
+    if(!authorName.innerText.toLowerCase().includes(currentUserName.toLowerCase())){
+           Swal.fire({ title: 'Error!', text: "you cannot edit someone elses's post", icon: 'error' });
+            return;
+
+    }
     let { data: postArray, error } = await supabase
         .from('post app table')
         .select('*')
@@ -213,12 +219,12 @@ async function loadPosts() {
         listHtml += `
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span style="text-transform:capitalize;">Posted by: ${item.author}</span>
+                    <span class="auth" style="text-transform:capitalize;">Posted by: ${item.author}</span>
                     <div class="ms-auto">
                         <button onclick="deletePost(${item.id})" style="background: none; border: none; cursor: pointer;" class="me-2">
                             <img src="assets/trash-bin.png" style="width: 26px;">
                         </button>
-                        <button onclick="editPost(${item.id})" style="background: none; border: none; cursor: pointer;">
+                        <button onclick="editPost(this, ${item.id})" style="background: none; border: none; cursor: pointer;">
                             <img src="assets/pencil.png" style="width: 19px;">
                         </button>
                     </div>
