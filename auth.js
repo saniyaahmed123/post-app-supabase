@@ -65,6 +65,7 @@ submitBtn.addEventListener('click', async (event) => {
                     text: 'Registered successfully! Please check your email for a confirmation link.',
                     icon: 'success'
                 });
+                location.href = "dashboard.html";
             }
         } catch (error) {
             console.log(error);

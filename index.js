@@ -14,9 +14,76 @@ var SelectedImgSrc = "";
 var myStyle = "";
 var selectedTextColor = "#000000";
 var isEditing = false;
-var editIndex = null; 
+var editIndex = null;
 var selectedFont = "Segoe UI";
 var selectedSize = "18px";
+
+var search = document.getElementById('query');
+
+search.addEventListener('input', async function searchPosts(event) {
+    var searchInput = event.target.value;
+
+    if (!searchInput.trim()) return;
+
+    try {
+        const { data, error } = await supabase
+            .from('post app table')
+            .select('*')
+            .or(`title.ilike.%${searchInput}%,description.ilike.%${searchInput}%`)
+            .order('id', { ascending: false })
+
+        if (error) {
+            console.error(error);
+            return;
+        }
+
+        postsContainer.innerHTML = "";
+        var listHtml = "";
+
+        if (data && data.length) {
+            data.forEach(item => {
+                var itemFont = item.font || "Segoe UI";
+                var itemSize = item.fontSize || "18px";
+                var itemBg = item.image ? `background-image: url(${item.image}); background-size: cover;` : "background-color: transparent;";
+
+                listHtml += `
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="auth" style="text-transform:capitalize;">Posted by: ${item.author}</span>
+                    <div class="ms-auto">
+                        <button onclick="deletePost(${item.id})" style="background: none; border: none; cursor: pointer;" class="me-2">
+                            <img src="assets/trash-bin.png" style="width: 26px;">
+                        </button>
+                        <button onclick="editPost(this, ${item.id})" style="background: none; border: none; cursor: pointer;">
+                            <img src="assets/pencil.png" style="width: 19px;">
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body px-4 py-4" style="${itemBg} min-height: 200px; ">
+                    <h3 style="color: ${item.color} !important; font-size: ${itemSize} !important; font-weight: bold; font-family: ${itemFont};">${item.title}</h3>
+                    <p style="color: white; font-size: 18px !important;">${item.description}</p>
+                </div>
+            </div>`;
+            });
+
+            postsContainer.innerHTML = listHtml;
+        }
+        else {
+            postsContainer.innerHTML = `
+       <div class="posts-empty-state">
+    <img src="nothing.png" alt="No posts found" style="width: 100px; height: auto; margin-bottom: 15px;">
+    <p>No posts found.</p>
+</div>
+    `;
+        }
+
+
+        console.log(data);
+
+    } catch (err) {
+        console.error(err);
+    }
+});
 
 var userIcon = document.getElementById("userIcon");
 if (userIcon) {
@@ -34,7 +101,7 @@ function changeFont(fontPicker) {
 function changeSize(sizePicker) {
     selectedSize = sizePicker.value;
     console.log(selectedSize)
-    
+
 }
 
 function applybg(img) {
@@ -88,11 +155,11 @@ async function post() {
         isEditing = false;
         editIndex = null;
     } else {
-        let {data, error } = await supabase
+        let { data, error } = await supabase
             .from('post app table')
             .insert([postData])
             .select()
-            console.log(data)
+        console.log(data)
 
 
         if (error) {
@@ -155,15 +222,15 @@ async function deletePost(id) {
         width: '600px'
     });
 }
-async function editPost(event,id) {
-var myCard = event.parentNode.parentNode.parentNode;
-   var authorName = myCard.querySelector('.auth')
+async function editPost(event, id) {
+    var myCard = event.parentNode.parentNode.parentNode;
+    var authorName = myCard.querySelector('.auth')
     console.log(authorName)
     console.log(!authorName.innerText.toLowerCase().includes(currentUserName.toLowerCase()))
 
-    if(!authorName.innerText.toLowerCase().includes(currentUserName.toLowerCase())){
-           Swal.fire({ title: 'Error!', text: "you cannot edit someone elses's post", icon: 'error' });
-            return;
+    if (!authorName.innerText.toLowerCase().includes(currentUserName.toLowerCase())) {
+        Swal.fire({ title: 'Error!', text: "you cannot edit someone elses's post", icon: 'error' });
+        return;
 
     }
     let { data: postArray, error } = await supabase
@@ -196,7 +263,11 @@ var myCard = event.parentNode.parentNode.parentNode;
 }
 async function loadPosts() {
     if (!postsContainer) return;
-    postsContainer.innerHTML = "<h4>Loading posts from cloud...</h4>";
+    postsContainer.innerHTML = `<div class="d-flex mt-5 justify-content-center align-items-center" style="min-height: 200px;">
+  <div class="spinner-border text-light" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+</div>`
 
     let { data: allPosts, error } = await supabase
         .from('post app table')
