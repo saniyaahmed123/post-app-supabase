@@ -102,4 +102,17 @@ submitBtn.addEventListener('click', async (event) => {
             console.log(error);
         }
     }
-});
+})
+const { data } = supabase.auth.onAuthStateChange((event, session) => {
+  console.log(event, session)
+
+  if (event === 'INITIAL_SESSION') {
+    if(session === null){
+          alert('create account first !')
+    }
+
+  } else if (event === 'SIGNED_IN') {
+                    // window.location.href = "dashboard.html";
+
+  } 
+})

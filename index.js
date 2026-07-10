@@ -1,11 +1,33 @@
-
 var supabase = window.supabase.createClient(
     'https://lklhickxvjsdjhpdfuwz.supabase.co',
     'sb_publishable_IXGVEByFPxwQuE7iEUArUg_S5STh98Y'
 );
-window.onload = function () {
+let authorEmail = "";
+let display_name;
+let userId;
+window.onload = async function () {
+
+    try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+            console.error("Auth error:", error.message);
+        } else if (data && data.user) {
+            display_name = data.user.user_metadata.display_name;
+            authorEmail = data.user.email || "";
+            userId = data.user.id
+            console.log(data.user)
+            var userIcon = document.getElementById("userIcon");
+            if (userIcon) {
+                userIcon.innerText = display_name.charAt(0).toUpperCase();
+                console.log(display_name)
+            }
+        }
+    } catch (err) {
+        console.error("Network or execution error:", err);
+    }
     loadPosts();
 };
+
 var currentUserName = localStorage.getItem('userName') || "Guest";
 var postsContainer = document.getElementById('posts');
 var title = document.getElementById('title');
@@ -20,38 +42,50 @@ var selectedSize = "18px";
 
 var search = document.getElementById('query');
 
-search.addEventListener('input', async function searchPosts(event) {
-    var searchInput = event.target.value;
+if (search) {
+    search.addEventListener('input', async function searchPosts(event) {
+        var searchInput = event.target.value;
 
-    if (!searchInput.trim()) return;
-
-    try {
-        const { data, error } = await supabase
-            .from('post app table')
-            .select('*')
-            .or(`title.ilike.%${searchInput}%,description.ilike.%${searchInput}%`)
-            .order('id', { ascending: false })
-
-        if (error) {
-            console.error(error);
+        if (!searchInput.trim()) {
+            loadPosts();
             return;
         }
 
-        postsContainer.innerHTML = "";
-        var listHtml = "";
+        try {
+            const { data, error } = await supabase
+                .from('post app table')
+                .select('*')
+                .or(`title.ilike.%${searchInput}%,description.ilike.%${searchInput}%,email.ilike.%${searchInput}%,author.ilike.%${searchInput}%`)
+                .order('id', { ascending: false });
 
-        if (data && data.length) {
-            data.forEach(item => {
-                var itemFont = item.font || "Segoe UI";
-                var itemSize = item.fontSize || "18px";
-                var itemBg = item.image ? `background-image: url(${item.image}); background-size: cover;` : "background-color: transparent;";
+            if (error) {
+                console.error(error);
+                return;
+            }
 
-                listHtml += `
+            postsContainer.innerHTML = "";
+            var listHtml = "";
+
+            if (data && data.length) {
+                data.forEach(item => {
+                    var itemFont = item.font || "Segoe UI";
+                    var itemSize = item.fontSize || "18px";
+                    var itemBg = item.image ? `background-image: url(${item.image}); background-size: cover;` : "background-color: transparent;";
+
+                    listHtml += `
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="auth" style="text-transform:capitalize;">Posted by: ${item.author}</span>
+                    <span class="auth" style="text-transform: lowercase; display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 35px; height: 35px; background-color:cornflowerblue; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; text-transform: uppercase;">
+                            ${item.author ? item.author.charAt(0) : 'G'}
+                        </div>
+                        <div class="text-stack" style="display: flex; flex-direction: column; text-align: left;">
+                            <span style="font-weight: 500; text-transform: capitalize">${item.author || 'Guest'}</span>
+                            <p style="margin: 0; font-size: 0.85rem; color: #6c757d;">${item.email || ''}</p>
+                        </div>
+                    </span>
                     <div class="ms-auto">
-                        <button onclick="deletePost(${item.id})" style="background: none; border: none; cursor: pointer;" class="me-2">
+                        <button onclick="deletePost(this ,${item.id})" style="background: none; border: none; cursor: pointer;" class="me-2">
                             <img src="assets/trash-bin.png" style="width: 26px;">
                         </button>
                         <button onclick="editPost(this, ${item.id})" style="background: none; border: none; cursor: pointer;">
@@ -64,44 +98,30 @@ search.addEventListener('input', async function searchPosts(event) {
                     <p style="color: white; font-size: 18px !important;">${item.description}</p>
                 </div>
             </div>`;
-            });
+                });
 
-            postsContainer.innerHTML = listHtml;
+                postsContainer.innerHTML = listHtml;
+            } else {
+                postsContainer.innerHTML = `
+            <div class="posts-empty-state text-center py-5">
+                <img src="nothing.png" alt="No posts found" style="width: 100px; height: auto; margin-bottom: 15px;">
+                <p>No posts found.</p>
+            </div>`;
+            }
+
+        } catch (err) {
+            console.error(err);
         }
-        else {
-            postsContainer.innerHTML = `
-       <div class="posts-empty-state">
-    <img src="nothing.png" alt="No posts found" style="width: 100px; height: auto; margin-bottom: 15px;">
-    <p>No posts found.</p>
-</div>
-    `;
-        }
-
-
-        console.log(data);
-
-    } catch (err) {
-        console.error(err);
-    }
-});
-
-var userIcon = document.getElementById("userIcon");
-if (userIcon) {
-    userIcon.innerText = currentUserName.charAt(0).toUpperCase();
+    });
 }
-
-
 
 
 function changeFont(fontPicker) {
     selectedFont = fontPicker.value;
 }
 
-
 function changeSize(sizePicker) {
     selectedSize = sizePicker.value;
-    console.log(selectedSize)
-
 }
 
 function applybg(img) {
@@ -121,25 +141,60 @@ function applycolor(element) {
     }
     element.classList.add('selected');
     selectedTextColor = element.style.backgroundColor;
-    title.style.color = selectedTextColor;
-    description.style.color = selectedTextColor;
+    if (title) title.style.color = selectedTextColor;
+    if (description) description.style.color = selectedTextColor;
 }
-
+let imgUrl
+var imageFile;
+let fileName;
 async function post() {
+    
+    
+    
     if (title.value.trim() === "" || description.value.trim() === "") {
         Swal.fire({ title: 'Error!', text: 'Fill all fields', icon: 'error' });
         return;
     }
 
-    var postData = {
-        title: title.value,
-        description: description.value,
-        image: SelectedImgSrc,
-        color: selectedTextColor,
-        author: currentUserName,
-        font: selectedFont,
-        fontSize: selectedSize
-    };
+    imageFile = document.getElementById('customImage').files[0]
+    if (imageFile) {
+        fileName = `${Date.now()}-${imageFile.name.replace(/\s+/g, '-')}`;
+        console.log(fileName)
+        const { error: uploadError } = await supabase
+        .storage
+        .from('postimages')
+        .upload(fileName, imageFile, {
+            cacheControl: '3600',
+            upsert: false
+        })
+        if (uploadError) {
+            alert('upload error')
+        }
+        const { data: publicUrlData } = supabase
+        .storage
+        .from('postimages')
+        .getPublicUrl(fileName)
+            console.log(publicUrlData.publicUrl)
+            imgUrl = publicUrlData.publicUrl
+        }
+        else if(SelectedImgSrc){
+            imgUrl = SelectedImgSrc
+        }
+        var postData = {
+            title: title.value,
+            description: description.value,
+            image: imgUrl,
+            color: selectedTextColor,
+            author: display_name,
+            font: selectedFont,
+            fontSize: selectedSize,
+            email: authorEmail,
+            user_id: userId
+    
+            
+        }
+
+
 
     if (isEditing === true && editIndex !== null) {
         let { error } = await supabase
@@ -155,12 +210,9 @@ async function post() {
         isEditing = false;
         editIndex = null;
     } else {
-        let { data, error } = await supabase
+        let { error } = await supabase
             .from('post app table')
-            .insert([postData])
-            .select()
-        console.log(data)
-
+            .insert([postData]);
 
         if (error) {
             console.error("Insertion Error:", error.message);
@@ -172,6 +224,8 @@ async function post() {
     loadPosts();
     resetInputs();
 }
+
+
 function resetInputs() {
     title.value = "";
     description.value = "";
@@ -192,18 +246,34 @@ function resetInputs() {
         colorbox[i].classList.remove('selected');
     }
 }
-async function deletePost(id) {
-    let { error } = await supabase
+var item;
+async function deletePost(buttonElement, id) {
+    // Execute delete statement returning deleted rows
+    let { data: postArray, error } = await supabase
         .from('post app table')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select('*');
 
-    if (error) {
-        console.error("Delete Error:", error.message);
-    } else {
-        loadPosts();
+    // If RLS blocked the operation, postArray will be empty or error will exist
+    if (error || !postArray || postArray.length === 0) {
+        Swal.fire({
+            title: 'Content Protected',
+            text: 'This workspace belongs to another creator. You only have permission to delete your own posts.',
+            icon: 'info',
+            background: '#1e1e24',
+            color: '#ffffff',
+            confirmButtonColor: '#22d3ee',
+            confirmButtonText: 'Got it, thanks!'
+        });
+        return; // Guard statement stops execution early
     }
-} function previewPost() {
+
+    // Only fetch fresh posts if the operation actually succeeded
+    loadPosts();
+}
+
+function previewPost() {
     if (!title.value.trim() && !description.value.trim()) {
         Swal.fire({ icon: 'error', title: 'Empty!', text: 'Write something to preview!' });
         return;
@@ -222,36 +292,42 @@ async function deletePost(id) {
         width: '600px'
     });
 }
-async function editPost(event, id) {
-    var myCard = event.parentNode.parentNode.parentNode;
-    var authorName = myCard.querySelector('.auth')
-    console.log(authorName)
-    console.log(!authorName.innerText.toLowerCase().includes(currentUserName.toLowerCase()))
+async function editPost(buttonElement, id, user_id) {
 
-    if (!authorName.innerText.toLowerCase().includes(currentUserName.toLowerCase())) {
-        Swal.fire({ title: 'Error!', text: "you cannot edit someone elses's post", icon: 'error' });
-        return;
 
-    }
-    let { data: postArray, error } = await supabase
+
+    let { data, error } = await supabase
         .from('post app table')
         .select('*')
-        .eq('id', id);
+        .eq('id', id)
 
-    if (error || !postArray || postArray.length === 0) {
+
+
+    if (error) {
         console.error("Could not fetch post to edit:", error);
         return;
     }
 
-    var item = postArray[0];
+    var item = data[0];
 
+    if (userId !== item.user_id) {
+        Swal.fire({
+            title: 'Access Denied',
+            text: 'This workspace belongs to another creator. You only have permission to edit your own posts.',
+            icon: 'warning',
+            background: '#1e1e24',
+            color: '#ffffff',
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Understood'
+        });
+        return;
+    }
     title.value = item.title;
     description.value = item.description;
     selectedFont = item.font || "Segoe UI";
     selectedSize = item.fontSize || "18px";
     selectedTextColor = item.color || "#000000";
     SelectedImgSrc = item.image || "";
-
 
     if (document.getElementById('fontPicker')) document.getElementById('fontPicker').value = selectedFont;
     if (document.getElementById('sizePicker')) document.getElementById('sizePicker').value = selectedSize;
@@ -261,13 +337,15 @@ async function editPost(event, id) {
     editIndex = id;
     isEditing = true;
 }
+
 async function loadPosts() {
     if (!postsContainer) return;
-    postsContainer.innerHTML = `<div class="d-flex mt-5 justify-content-center align-items-center" style="min-height: 200px;">
-  <div class="spinner-border text-light" role="status">
-    <span class="visually-hidden">Loading...</span>
-  </div>
-</div>`
+    postsContainer.innerHTML = `
+    <div class="d-flex mt-5 justify-content-center align-items-center" style="min-height: 200px;">
+      <div class="spinner-border text-light" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>`;
 
     let { data: allPosts, error } = await supabase
         .from('post app table')
@@ -285,14 +363,21 @@ async function loadPosts() {
         var item = allPosts[i];
         var itemFont = item.font || "Segoe UI";
         var itemSize = item.fontSize || "18px";
-        var itemBg = item.image ? `background-image: url(${item.image}); background-size: cover;` : "background-color: transparent;";
-
+        var itemBg = item.image ? `background-image: url('${item.image}'); background-size: cover;` : "background-color: transparent;";
         listHtml += `
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="auth" style="text-transform:capitalize;">Posted by: ${item.author}</span>
+                    <span class="auth" style="text-transform: lowercase; display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 35px; height: 35px; background-color:cornflowerblue; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; text-transform: uppercase;">
+                            ${item.author ? item.author.charAt(0) : 'G'}
+                        </div>
+                        <div class="text-stack" style="display: flex; flex-direction: column; text-align: left;">
+                            <span style="font-weight: 500; text-transform: capitalize">${item.author || 'Guest'}</span>
+                            <p style="margin: 0; font-size: 0.85rem; color: #6c757d;">${item.email || ''}</p>
+                        </div>
+                    </span>
                     <div class="ms-auto">
-                        <button onclick="deletePost(${item.id})" style="background: none; border: none; cursor: pointer;" class="me-2">
+                        <button onclick="deletePost(this ,${item.id})" style="background: none; border: none; cursor: pointer;" class="me-2">
                             <img src="assets/trash-bin.png" style="width: 26px;">
                         </button>
                         <button onclick="editPost(this, ${item.id})" style="background: none; border: none; cursor: pointer;">
@@ -321,7 +406,6 @@ function logOut() {
     }).then(function (result) {
         if (result.isConfirmed) {
             localStorage.removeItem('isLoggedIn');
-
             window.location.href = 'index.html';
         }
     });

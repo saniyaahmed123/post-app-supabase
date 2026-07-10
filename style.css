@@ -321,6 +321,18 @@ body {
   box-shadow: 0.5em 1em rgba(61, 184, 143, 0.75), -0.5em -1em rgba(233, 169, 32, 0.75);
  }
 }
+.circle {
+  width: 100px;
+  height: 100px;
+  background-color: #3498db;
+  border-radius: 50%;
+}
+.text-stack {
+  display: flex;
+  flex-direction: column; /* Stacks children vertically */
+  gap: 10px;              /* Creates an even gap between every stacked item */
+  align-items: flex-start; /* Aligns text to the left (use 'center' to center all text) */
+}
 
 .loader {
  position: absolute;
