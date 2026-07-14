@@ -3,6 +3,15 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const supabase_url = "https://lklhickxvjsdjhpdfuwz.supabase.co"
 const publishable_key = "sb_publishable_IXGVEByFPxwQuE7iEUArUg_S5STh98Y"
 const supabase = createClient(supabase_url, publishable_key)
+let googlebtn = document.getElementById('continueWithGoogle')
+googlebtn.addEventListener('click', async() => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: 'http://127.0.0.1:5500/dashboard.html'
+        }
+    })
+})
 
 let InSignUpState = false;
 
@@ -104,15 +113,15 @@ submitBtn.addEventListener('click', async (event) => {
     }
 })
 const { data } = supabase.auth.onAuthStateChange((event, session) => {
-  console.log(event, session)
+    console.log(event, session)
 
-  if (event === 'INITIAL_SESSION') {
-    if(session === null){
-          alert('create account first !')
+    if (event === 'INITIAL_SESSION') {
+        if (session === null) {
+            alert('create account first !')
+        }
+
+    } else if (event === 'SIGNED_IN') {
+        // window.location.href = "dashboard.html";
+
     }
-
-  } else if (event === 'SIGNED_IN') {
-                    // window.location.href = "dashboard.html";
-
-  } 
 })

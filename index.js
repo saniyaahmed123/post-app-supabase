@@ -2,6 +2,55 @@ var supabase = window.supabase.createClient(
     'https://lklhickxvjsdjhpdfuwz.supabase.co',
     'sb_publishable_IXGVEByFPxwQuE7iEUArUg_S5STh98Y'
 );
+function renderPostCard(data) {
+
+    if (!data || data.length === 0) {
+        postsContainer.innerHTML = `
+            <div class="posts-empty-state text-center py-5">
+                <img src="nothing.png" alt="No posts found" style="width: 100px; height: auto; margin-bottom: 15px;">
+                <p>No posts found.</p>
+            </div>`;
+        return;
+    }
+
+    let listHtml = "";
+
+    data.forEach(item => {
+
+        var itemFont = item.font || "Segoe UI";
+        var itemSize = item.fontSize || "18px";
+        var itemBg = item.image ? `background-image: url('${item.image}'); background-size: cover;` : "background-color: transparent;";
+
+        listHtml += `
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="auth" style="text-transform: lowercase; display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 35px; height: 35px; background-color:cornflowerblue; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; text-transform: uppercase;">
+                        ${item.author ? item.author.charAt(0) : 'G'}
+                    </div>
+                    <div class="text-stack" style="display: flex; flex-direction: column; text-align: left;">
+                        <span style="font-weight: 500; text-transform: capitalize">${item.author || 'Guest'}</span>
+                        <p style="margin: 0; font-size: 0.85rem; color: #6c757d;">${item.email || ''}</p>
+                    </div>
+                </span>
+                <div class="ms-auto">
+                    <button onclick="deletePost(this, ${item.id})" style="background: none; border: none; cursor: pointer;" class="me-2">
+                        <img src="assets/trash-bin.png" style="width: 26px;">
+                    </button>
+                    <button onclick="editPost(this, ${item.id})" style="background: none; border: none; cursor: pointer;">
+                        <img src="assets/pencil.png" style="width: 19px;">
+                    </button>
+                </div>
+            </div>
+            <div class="card-body px-4 py-4" style="${itemBg} min-height: 200px; ">
+                <h3 style="color: ${item.color} !important; font-size: ${itemSize} !important; font-weight: bold; font-family: ${itemFont};">${item.title}</h3>
+                <p style="color: white; font-size: 18px !important;">${item.description}</p>
+            </div>
+        </div>`;
+    });
+
+    postsContainer.innerHTML = listHtml;
+}
 let authorEmail = "";
 let display_name;
 let userId;
@@ -25,7 +74,8 @@ window.onload = async function () {
     } catch (err) {
         console.error("Network or execution error:", err);
     }
-    loadPosts();
+    loadPosts()
+
 };
 
 var currentUserName = localStorage.getItem('userName') || "Guest";
@@ -47,7 +97,7 @@ if (search) {
         var searchInput = event.target.value;
 
         if (!searchInput.trim()) {
-            loadPosts();
+
             return;
         }
 
@@ -66,48 +116,7 @@ if (search) {
             postsContainer.innerHTML = "";
             var listHtml = "";
 
-            if (data && data.length) {
-                data.forEach(item => {
-                    var itemFont = item.font || "Segoe UI";
-                    var itemSize = item.fontSize || "18px";
-                    var itemBg = item.image ? `background-image: url(${item.image}); background-size: cover;` : "background-color: transparent;";
-
-                    listHtml += `
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="auth" style="text-transform: lowercase; display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 35px; height: 35px; background-color:cornflowerblue; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; text-transform: uppercase;">
-                            ${item.author ? item.author.charAt(0) : 'G'}
-                        </div>
-                        <div class="text-stack" style="display: flex; flex-direction: column; text-align: left;">
-                            <span style="font-weight: 500; text-transform: capitalize">${item.author || 'Guest'}</span>
-                            <p style="margin: 0; font-size: 0.85rem; color: #6c757d;">${item.email || ''}</p>
-                        </div>
-                    </span>
-                    <div class="ms-auto">
-                        <button onclick="deletePost(this ,${item.id})" style="background: none; border: none; cursor: pointer;" class="me-2">
-                            <img src="assets/trash-bin.png" style="width: 26px;">
-                        </button>
-                        <button onclick="editPost(this, ${item.id})" style="background: none; border: none; cursor: pointer;">
-                            <img src="assets/pencil.png" style="width: 19px;">
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body px-4 py-4" style="${itemBg} min-height: 200px; ">
-                    <h3 style="color: ${item.color} !important; font-size: ${itemSize} !important; font-weight: bold; font-family: ${itemFont};">${item.title}</h3>
-                    <p style="color: white; font-size: 18px !important;">${item.description}</p>
-                </div>
-            </div>`;
-                });
-
-                postsContainer.innerHTML = listHtml;
-            } else {
-                postsContainer.innerHTML = `
-            <div class="posts-empty-state text-center py-5">
-                <img src="nothing.png" alt="No posts found" style="width: 100px; height: auto; margin-bottom: 15px;">
-                <p>No posts found.</p>
-            </div>`;
-            }
+            renderPostCard(data)
 
         } catch (err) {
             console.error(err);
@@ -148,9 +157,9 @@ let imgUrl
 var imageFile;
 let fileName;
 async function post() {
-    
-    
-    
+
+
+
     if (title.value.trim() === "" || description.value.trim() === "") {
         Swal.fire({ title: 'Error!', text: 'Fill all fields', icon: 'error' });
         return;
@@ -161,38 +170,41 @@ async function post() {
         fileName = `${Date.now()}-${imageFile.name.replace(/\s+/g, '-')}`;
         console.log(fileName)
         const { error: uploadError } = await supabase
-        .storage
-        .from('postimages')
-        .upload(fileName, imageFile, {
-            cacheControl: '3600',
-            upsert: false
-        })
+            .storage
+            .from('postimages')
+            .upload(fileName, imageFile, {
+                cacheControl: '3600',
+                upsert: false
+            })
         if (uploadError) {
             alert('upload error')
         }
         const { data: publicUrlData } = supabase
-        .storage
-        .from('postimages')
-        .getPublicUrl(fileName)
-            console.log(publicUrlData.publicUrl)
-            imgUrl = publicUrlData.publicUrl
-        }
-        else if(SelectedImgSrc){
-            imgUrl = SelectedImgSrc
-        }
-        var postData = {
-            title: title.value,
-            description: description.value,
-            image: imgUrl,
-            color: selectedTextColor,
-            author: display_name,
-            font: selectedFont,
-            fontSize: selectedSize,
-            email: authorEmail,
-            user_id: userId
-    
-            
-        }
+            .storage
+            .from('postimages')
+            .getPublicUrl(fileName)
+        console.log(publicUrlData.publicUrl)
+        imgUrl = publicUrlData.publicUrl
+    }
+    else if (SelectedImgSrc) {
+        imgUrl = SelectedImgSrc
+    }
+    else{
+        imgUrl = ""
+    }
+    var postData = {
+        title: title.value,
+        description: description.value,
+        image: imgUrl,
+        color: selectedTextColor,
+        author: display_name,
+        font: selectedFont,
+        fontSize: selectedSize,
+        email: authorEmail,
+        user_id: userId
+
+
+    }
 
 
 
@@ -221,7 +233,8 @@ async function post() {
         }
     }
 
-    loadPosts();
+
+
     resetInputs();
 }
 
@@ -236,6 +249,7 @@ function resetInputs() {
     selectedTextColor = "#000000";
     selectedFont = "Segoe UI";
     selectedSize = "18px";
+     imgUrl = "";          
 
     var bgimgs = document.getElementsByClassName('bgimg');
     for (var i = 0; i < bgimgs.length; i++) {
@@ -270,7 +284,7 @@ async function deletePost(buttonElement, id) {
     }
 
     // Only fetch fresh posts if the operation actually succeeded
-    loadPosts();
+
 }
 
 function previewPost() {
@@ -347,7 +361,7 @@ async function loadPosts() {
       </div>
     </div>`;
 
-    let { data: allPosts, error } = await supabase
+    let { data, error } = await supabase
         .from('post app table')
         .select('*')
         .order('id', { ascending: false });
@@ -359,39 +373,7 @@ async function loadPosts() {
     }
 
     let listHtml = "";
-    for (var i = 0; i < allPosts.length; i++) {
-        var item = allPosts[i];
-        var itemFont = item.font || "Segoe UI";
-        var itemSize = item.fontSize || "18px";
-        var itemBg = item.image ? `background-image: url('${item.image}'); background-size: cover;` : "background-color: transparent;";
-        listHtml += `
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="auth" style="text-transform: lowercase; display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 35px; height: 35px; background-color:cornflowerblue; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; text-transform: uppercase;">
-                            ${item.author ? item.author.charAt(0) : 'G'}
-                        </div>
-                        <div class="text-stack" style="display: flex; flex-direction: column; text-align: left;">
-                            <span style="font-weight: 500; text-transform: capitalize">${item.author || 'Guest'}</span>
-                            <p style="margin: 0; font-size: 0.85rem; color: #6c757d;">${item.email || ''}</p>
-                        </div>
-                    </span>
-                    <div class="ms-auto">
-                        <button onclick="deletePost(this ,${item.id})" style="background: none; border: none; cursor: pointer;" class="me-2">
-                            <img src="assets/trash-bin.png" style="width: 26px;">
-                        </button>
-                        <button onclick="editPost(this, ${item.id})" style="background: none; border: none; cursor: pointer;">
-                            <img src="assets/pencil.png" style="width: 19px;">
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body px-4 py-4" style="${itemBg} min-height: 200px; ">
-                    <h3 style="color: ${item.color} !important; font-size: ${itemSize} !important; font-weight: bold; font-family: ${itemFont};">${item.title}</h3>
-                    <p style="color: white; font-size: 18px !important;">${item.description}</p>
-                </div>
-            </div>`;
-    }
-    postsContainer.innerHTML = listHtml;
+    renderPostCard(data);
 }
 
 function logOut() {
@@ -410,3 +392,12 @@ function logOut() {
         }
     });
 }
+supabase
+    .channel('post app ')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'post app table' }, payload => {
+        console.log('Change received!', payload)
+        loadPosts()
+    })
+    .subscribe((status) => {
+        console.log(status)
+    })
